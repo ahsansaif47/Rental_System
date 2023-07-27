@@ -1,67 +1,64 @@
 package Auth
 
 import (
-	utils "Rental_Sys/Utils"
+	utils "Rental_System/Utils"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 )
 
-func check_user_registration(email string) bool {
-	query := fmt.Sprintf("Select email from users where email = %s", email)
-	fmt.Print("Final query is: ", query)
-	emails, err := utils.Execute_query(query)
-
-	if err != nil {
-		if emails != nil {
-			count := 0
-			if emails.Next() {
-				count++
-			}
-			if count >= 1 {
-				return true
-			}
-		}
-		return false
-	}
-	return false
-}
-
 func Register_user(w http.ResponseWriter, r *http.Request) {
-
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
 	type registration_response struct {
-		response string
-		status   int
+		RegResponse string
+		Status      int
 	}
 
-	if check_user_registration(email) {
-		reg_resp := registration_response{
-			response: "Already registered",
-			status:   200,
-		}
-
-		json_data, _ := json.Marshal(reg_resp)
-		_, err := w.Write(json_data)
-		if err != nil {
-			log.Println(err.Error())
-		}
-		return
+	// connStr, err := utils.Connect_postgres()
+	if utils.ConnErr != nil {
+		log.Fatal("PostgreSQL Connection Error: ", utils.ConnErr.Error())
 	} else {
-		connStr, err := utils.Connect_postgres()
+		insert_user_query, err := utils.ConnStr.Prepare(`Insert into users(email, password) Values($1, $2)`)
 		if err != nil {
-			log.Fatal("Connection Error: ", err.Error())
+			log.Println("Error preparing query: ", err.Error())
+		}
+		encryptedPass, err := utils.Encrypt(password)
+
+		if err != nil {
+			log.Println("Error encrypting password: ", err.Error())
 		} else {
-			insert_user_query, err := connStr.Prepare(`Insert into users(email, password) Values($1, $2)`)
-			if err != nil {
-				log.Println("Error preparing query: ", err.Error())
-			}
-			_, err = insert_user_query.Exec(email, password)
-			if err != nil {
-				log.Fatal("Error adding new user: ", err.Error())
+			if hashStatus := utils.Compare_Encryption(password, encryptedPass); hashStatus {
+				_, err = insert_user_query.Exec(email, encryptedPass)
+				if err != nil {
+					if utils.Unique_constraint_violation_check(err) {
+						reg_resp := registration_response{
+							RegResponse: "User Already Resigtered",
+							Status:      200,
+						}
+						json_data, _ := json.Marshal(reg_resp)
+						_, err = w.Write(json_data)
+						if err != nil {
+							log.Println("Error Writing Response: ", err.Error())
+						}
+						return
+					} else {
+						log.Fatal("Error adding new user: ", err.Error())
+						return
+					}
+				} else {
+					reg_resp := registration_response{
+						RegResponse: "User Resigtered",
+						Status:      200,
+					}
+					json_data, _ := json.Marshal(reg_resp)
+					_, err := w.Write(json_data)
+					if err != nil {
+						log.Println("Error Writing Response: ", err.Error())
+					}
+					return
+				}
 			}
 		}
 	}

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 const (
@@ -27,16 +27,16 @@ func Connect_postgres() (DB *sql.DB, err error) {
 	return nil, err
 }
 
-func Execute_query(query string) (results *sql.Rows, err error) {
-	conn, err := Connect_postgres()
-	if err == nil {
-		results, err := conn.Query(query)
-		if err != nil {
-			return nil, err
-		} else {
-			return results, nil
-		}
+func Rows_iteration_error_check(rows *sql.Rows) error {
+	if rows.Err() != nil {
+		return rows.Err()
 	}
-	conn.Close()
-	return nil, err
+	return nil
 }
+
+func Unique_constraint_violation_check(err error) bool {
+	pqErr, _ := err.(*pq.Error)
+	return pqErr.Code == "23505"
+}
+
+var ConnStr, ConnErr = Connect_postgres()
