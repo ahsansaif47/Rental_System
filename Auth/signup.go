@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func validdate_email_server(dName string) bool {
+func validate_email_server(dName string) bool {
 	domains := []string{"gmail", "yahoo", "hormail"}
 	for i := 0; i < len(domains); i++ {
 		if domains[i] == dName {
@@ -51,7 +51,7 @@ func Register_user(w http.ResponseWriter, r *http.Request) {
 	} else {
 		mailServer_dot_com := strings.Split(email, "@")
 		domain := strings.Split(mailServer_dot_com[1], ".")[0]
-		isSerevr_valid := validdate_email_server(domain)
+		isSerevr_valid := validate_email_server(domain)
 		if !isSerevr_valid {
 			invalidServer_resp := registration_response{
 				RegResponse: "Invalid email server",
