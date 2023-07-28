@@ -37,8 +37,8 @@ func Register_user(w http.ResponseWriter, r *http.Request) {
 		Status      int
 	}
 
-	is_email := validate_email(email)
-	if !is_email {
+	isEmail_valid := validate_email(email)
+	if !isEmail_valid {
 		invalid_email_resp := registration_response{
 			RegResponse: "Incorrect email format",
 			Status:      200,
