@@ -1,1 +1,0 @@
-print("Rental system setup")
