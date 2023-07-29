@@ -27,6 +27,14 @@ func Connect_postgres() (DB *sql.DB, err error) {
 	return nil, err
 }
 
+func Count_rows(rows *sql.Rows) int {
+	count := 0
+	for rows.Next() {
+		count += 1
+	}
+	return count
+}
+
 func Rows_iteration_error_check(rows *sql.Rows) error {
 	if rows.Err() != nil {
 		return rows.Err()
