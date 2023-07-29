@@ -74,12 +74,12 @@ func Register_user(w http.ResponseWriter, r *http.Request) {
 						if err != nil {
 							log.Println("Error encrypting password: ", err.Error())
 						} else {
-							insert_user_query, err := utils.ConnStr.Prepare(`Insert into users(email, password) Values($1, $2)`)
+							insert_user_query, err := utils.ConnStr.Prepare(`Insert into users(email, password, name) Values($1, $2, $3)`)
 							if err != nil {
 								log.Println("Error preparing query: ", err.Error())
 							}
 							if hashStatus := utils.Compare_Encryption(password, encryptedPass); hashStatus {
-								_, err = insert_user_query.Exec(email, encryptedPass)
+								_, err = insert_user_query.Exec(email, encryptedPass, user_name)
 								if err != nil {
 									if utils.Unique_constraint_violation_check(err) {
 										reg_resp := registration_response{
