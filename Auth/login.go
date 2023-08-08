@@ -29,7 +29,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			fmt.Println("No Error till encryption")
 			if hashStatus := utils.Compare_Encryption(password, encryptedPass); hashStatus {
-				user_query, err := utils.ConnStr.Prepare(`SELECT * FROM users WHERE (email = $1 OR name = $1) AND password = $2`)
+				user_query, err := utils.ConnStr.Prepare(`SELECT * FROM users WHERE (email = $1) OR (name = $1) AND password = $2`)
 				if err != nil {
 					log.Println("Error preparing query: ", err.Error())
 				} else {
@@ -37,7 +37,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 					fmt.Println("Querying user")
 					if err == nil {
 						rowsIter_err := utils.Rows_iteration_error_check(users)
-						fmt.Println("Row iteration error status: ", rowsIter_err)
 						if rowsIter_err == nil {
 							usersCount := utils.Count_rows(users)
 							fmt.Println("User count is: ", usersCount)
