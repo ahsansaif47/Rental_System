@@ -15,64 +15,58 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("email_uname is: ", emailUname)
 	fmt.Println("Password is: ", password)
 	type loginResp struct {
-		Resp   string
-		Status int
+		Response string `json:"resp"`
+		Status   int
 	}
 
 	resp := loginResp{
-		Resp:   "",
-		Status: 200,
+		Response: "",
+		Status:   200,
 	}
 
-	if utils.ConnErr == nil {
-		encryptedPass, err := utils.Encrypt(password)
-		if err == nil {
-			fmt.Println("No Error till encryption")
-			if hashStatus := utils.Compare_Encryption(password, encryptedPass); hashStatus {
-				user_query, err := utils.ConnStr.Prepare(`SELECT * FROM users WHERE (email = $1) OR (name = $1) AND password = $2`)
-				if err != nil {
-					log.Println("Error preparing query: ", err.Error())
-				} else {
-					users, err := user_query.Query(emailUname, encryptedPass)
-					fmt.Println("Querying user")
-					if err == nil {
-						rowsIter_err := utils.Rows_iteration_error_check(users)
-						if rowsIter_err == nil {
-							usersCount := utils.Count_rows(users)
-							fmt.Println("User count is: ", usersCount)
-							if usersCount > 0 {
-								fmt.Println("In here")
-								resp.Resp = "Found User"
-								resp.Status = 200
-								json_resp, _ := json.Marshal(resp)
-								_, err := w.Write(json_resp)
-								if err != nil {
-									log.Println("Error writing response: ", err.Error())
-								}
-								fmt.Println("Found user")
-							} else {
-								resp.Resp = "User Not Found!"
-								resp.Status = 404
-								json_resp, _ := json.Marshal(resp)
-								_, err := w.Write(json_resp)
-								if err != nil {
-									log.Println("Error writing response: ", err.Error())
-								}
-								fmt.Println("User not found!")
-							}
-						} else {
-							log.Println("Error iterating rows: ", rowsIter_err.Error())
-						}
-					} else {
-						log.Println("Error Querying: ", err.Error())
-					}
-				}
-			}
-		} else {
-			log.Println("Error encrypting password: ", err.Error())
+	if utils.ConnErr != nil {
+		log.Fatalln("Database connection err: ", utils.ConnErr)
+	}
+	encryptedPass, err := utils.Encrypt(password)
+	if err != nil {
+		log.Fatalln("Error encrypting password: ", err)
+	}
+
+	if hashStatus := utils.Compare_Encryption(password, encryptedPass); hashStatus {
+		type User struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		user := User{
+			Email:    "",
+			Password: "",
 		}
 
-	} else {
-		log.Fatal("PostgreSQL Connection Error: ", utils.ConnErr.Error())
+		users, err := utils.ConnStr.Query(`SELECT email, password FROM users WHERE email = $1 and password = $2`,
+			emailUname, encryptedPass)
+		if err != nil {
+			log.Fatalln("Error querying user: ", err)
+		}
+
+		defer users.Close()
+
+		if rows_err := utils.Rows_iteration_error_check(users); rows_err != nil {
+			log.Println("Error iterating rows: ", rows_err)
+		}
+		for users.Next() {
+			err := users.Scan(&user.Email, &user.Password)
+			if err != nil {
+				log.Println("Error setting user value: ", err)
+			}
+		}
+		if emailUname == user.Email && encryptedPass == user.Password {
+			resp.Response = "User Found"
+			resp.Status = 200
+			json.NewEncoder(w).Encode(resp)
+		} else {
+			resp.Response = "User Not Found"
+			resp.Status = 200
+			json.NewEncoder(w).Encode(resp)
+		}
 	}
 }
